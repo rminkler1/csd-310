@@ -1,0 +1,28 @@
+// NoSQL User Document Datastructure:
+{
+    "first_name": "John",
+    "last_name": "Walton",
+    "birthday": "03/11/1992",
+    "roles": [
+        {
+            "type": "Head of Household"
+        },
+        {
+            "type": "Father"
+        }
+    ],
+    "dependents": [
+        {
+            "first_name": "John",
+            "last_name": "Walton"
+        },
+        {
+            "first_name": "Mary",
+            "last_name": "Walton"
+        },
+        {
+            "first_name": "Caleb",
+            "last_name": "Walton"
+        }
+    ]
+}
