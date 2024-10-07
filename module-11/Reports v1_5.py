@@ -16,7 +16,6 @@
 # Report 4: Hector
 # How much of each wine has sold over the last year.
 
-from sqlite3 import Cursor
 import mysql.connector
 import pandas as pd
 
@@ -26,7 +25,80 @@ def report1_employee_hours(cursor):
     # Report # 1 Employee Data ***
     # ****************************
     """
-    pass
+
+    # SQL query to retrieve quarterly timekeeping records along with employee names
+    sql = """
+    SELECT e.first_name, e.last_name, t.punch_datetime, t.in_or_out
+    FROM timekeeping t
+    JOIN employees e ON t.employee_id = e.employee_id
+    ORDER BY e.last_name, t.punch_datetime
+    """
+    
+    cursor.execute(sql)
+    timekeeping_records = cursor.fetchall()
+
+    # Debug print statement to check fetched records
+    print(f"Fetched Timekeeping Records: {timekeeping_records}")  # Debug statement
+
+    return timekeeping_records  # Ensure this is present
+
+# Function to determine the quarter from a date
+def get_quarter(date):
+    quarter = None
+    if 1 <= date.month <= 3:
+        quarter = "Q1"
+    elif 4 <= date.month <= 6:
+        quarter = "Q2"
+    elif 7 <= date.month <= 9:
+        quarter = "Q3"
+    else:
+        quarter = "Q4"
+    
+    print(f"Date: {date}, Quarter: {quarter}")  # Debug statement
+    return quarter
+
+# Calculates total hours worked per quarter for each employee
+def calculate_hours_per_quarter(records):
+    employee_data = {}
+    current_employee = None
+    last_punch_in = None
+
+    for record in records:
+        first_name, last_name, punch_datetime, in_or_out = record
+        print(f"Processing record: {record}")  # Debug statement to show each record being processed
+        employee_key = f"{first_name} {last_name}"
+
+        if employee_key not in employee_data:
+            employee_data[employee_key] = {"Q1": 0, "Q2": 0, "Q3": 0, "Q4": 0, "Total": 0}
+
+        if in_or_out == "IN":
+            last_punch_in = punch_datetime
+        elif in_or_out == "OUT" and last_punch_in:
+            # Calculates hours worked between IN and OUT punches
+            time_diff = punch_datetime - last_punch_in
+            hours_worked = time_diff.total_seconds() / 3600  # Convert to hours
+
+            # Determines quarter for this punch-out time
+            quarter = get_quarter(punch_datetime)
+
+            # Adds hours to appropriate quarter
+            employee_data[employee_key][quarter] += hours_worked
+            employee_data[employee_key]["Total"] += hours_worked
+
+            # Resets last_punch_in
+            last_punch_in = None
+
+    return employee_data
+
+# Displays report showing hours per quarter and total hours for each employee
+def display_quarterly_report(employee_data):
+    for employee, hours in employee_data.items():
+        print(f"\nEmployee: {employee}")
+        print("=" * 30)
+        for quarter in ["Q1", "Q2", "Q3", "Q4"]:
+            print(f"{quarter}: {hours[quarter]:.2f} hours")
+        print(f"Total hours worked across all quarters: {hours['Total']:.2f} hours")
+
 
 def report2_wine_sales_by_distributor(cursor):
     """
@@ -90,6 +162,7 @@ def report2_wine_sales_by_distributor(cursor):
 
         # Print current data
         print(f"{result[0]:25s}{result[1]:15s}{result[2]:7n} Cases")
+        pass
 
 def report3_supplier_delivery(cursor):
     """
@@ -142,6 +215,7 @@ def report3_supplier_delivery(cursor):
 
     # Print Report
     print(df)
+    pass
 
 
 
@@ -151,8 +225,37 @@ def report4_wine_sales(cursor):
     # Report # 4 Total Wine Sales ***
     # *******************************
     """
-    pass
 
+    # SQL query to get total wine sales for the last year
+    sql = """
+    SELECT product_name, SUM(quantity) AS total_quantity
+    FROM items_sold AS i
+    JOIN products AS p ON i.product_id = p.product_id
+    JOIN sales_orders AS s ON i.transaction_num = s.transaction_num
+    WHERE s.order_date > DATE_SUB(NOW(), INTERVAL 1 YEAR)
+    GROUP BY product_name
+    ORDER BY total_quantity DESC;
+    """
+
+    # Execute the query to fetch wine sales data
+    cursor.execute(sql)
+    results = cursor.fetchall()
+
+    # Set up report header
+    print("\n\t\t*******************************")
+    print("\t\t*** Total Wine Sales Report ***")
+    print("\t\t***     Last 12 Months      ***")
+    print("\t\t*******************************\n")
+
+    # Format and print the column headers
+    print(f"{'Wine':25s}{'Total Quantity':>15s}")
+
+    # Iterate through the fetched results and print each row
+    for result in results:
+        product_name, total_quantity = result
+
+        # Print the product name (wine) and total quantity sold
+        print(f"{product_name:25s}{total_quantity:>15f}")
 
 # Establish a connection to MySQL
 # We need to specify the host (usually localhost for local development),
@@ -181,8 +284,17 @@ except mysql.connector.Error as err:
     exit(1)
 
 try:
-    # Run Report # 1
-    report1_employee_hours(cursor)
+    # Run Report # 1 and capture the returned timekeeping records
+    timekeeping_records = report1_employee_hours(cursor)
+
+    # Check if timekeeping_records is not empty
+    print(f"Timekeeping Records: {timekeeping_records}")  # Debug statement
+
+    # Generate report showing hours per quarter for each employee
+    employee_data = calculate_hours_per_quarter(timekeeping_records)
+
+    # Display the final report
+    display_quarterly_report(employee_data)
 
     # Run Report # 2
     report2_wine_sales_by_distributor(cursor)

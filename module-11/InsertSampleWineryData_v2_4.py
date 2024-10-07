@@ -2,7 +2,7 @@
 # Ian Lewis Group 3 Milestone 2 Python additional sample data insertion 09/28/24
 
 
-import datetime
+from datetime import datetime, timedelta
 
 #  Import package that allows Python to connect to MySQL and execute SQL queries.
 import mysql.connector
@@ -59,23 +59,65 @@ val = [
 ]
 cursor.executemany(sql, val)
 
-# insert timekeeping sample punches
-sql = "INSERT INTO timekeeping (employee_id, in_or_out, punch_datetime) VALUES (%s, %s, %s)"
-val = [
-    (1, 'IN', datetime.datetime(2024, 9, 27, 8, 0, 0)),
-    (1, 'OUT', datetime.datetime(2024, 9, 27, 17, 0, 0)),
-    (2, 'IN', datetime.datetime(2024, 9, 27, 9, 0, 0)),
-    (2, 'OUT', datetime.datetime(2024, 9, 27, 18, 0, 0)),
-    (3, 'IN', datetime.datetime(2024, 9, 27, 7, 30, 0)),
-    (3, 'OUT', datetime.datetime(2024, 9, 27, 16, 30, 0)),
-    (4, 'IN', datetime.datetime(2024, 9, 27, 9, 0, 0)),
-    (4, 'OUT', datetime.datetime(2024, 9, 27, 16, 30, 0)),
-    (5, 'IN', datetime.datetime(2024, 9, 27, 7, 0, 0)),
-    (5, 'OUT', datetime.datetime(2024, 9, 27, 14, 30, 0)),
-    (6, 'IN', datetime.datetime(2024, 9, 27, 9, 0, 0)),
-    (6, 'OUT', datetime.datetime(2024, 9, 27, 18, 30, 0)),
+# insert (initial) timekeeping sample punches - commented-out for Report 1, included for posterity
+# sql = "INSERT INTO timekeeping (employee_id, in_or_out, punch_datetime) VALUES (%s, %s, %s)"
+# val = [
+    # (1, 'IN', datetime.datetime(2024, 9, 27, 8, 0, 0)),
+    # (1, 'OUT', datetime.datetime(2024, 9, 27, 17, 0, 0)),
+    # (2, 'IN', datetime.datetime(2024, 9, 27, 9, 0, 0)),
+    # (2, 'OUT', datetime.datetime(2024, 9, 27, 18, 0, 0)),
+    # (3, 'IN', datetime.datetime(2024, 9, 27, 7, 30, 0)),
+    # (3, 'OUT', datetime.datetime(2024, 9, 27, 16, 30, 0)),
+    # (4, 'IN', datetime.datetime(2024, 9, 27, 9, 0, 0)),
+    # (4, 'OUT', datetime.datetime(2024, 9, 27, 16, 30, 0)),
+    # (5, 'IN', datetime.datetime(2024, 9, 27, 7, 0, 0)),
+    # (5, 'OUT', datetime.datetime(2024, 9, 27, 14, 30, 0)),
+    # (6, 'IN', datetime.datetime(2024, 9, 27, 9, 0, 0)),
+    #(6, 'OUT', datetime.datetime(2024, 9, 27, 18, 30, 0)),
+# ]
+# cursor.executemany(sql, val)
+
+
+# New Employee Timekeeping Code: Generates and Inserts Timekeeping Punches for 40-Hour Work Weeks for Each Employee - Report 1
+# Helper function to generate time punches for employee
+def generate_punches(employee_id, start_date):
+    punches = []
+    work_start_time = datetime.strptime("09:00", "%H:%M")  # Work starts at 9:00 AM
+    work_end_time = datetime.strptime("17:00", "%H:%M")  # Work ends at 5:00 PM, 8 hours per workday
+
+    current_date = start_date
+    for _ in range(4):  # 4 weeks per quarter
+        for day in range(5):  # Monday to Friday, 5 workdays per week
+            punch_in = datetime.combine(current_date, work_start_time.time())
+            punch_out = datetime.combine(current_date, work_end_time.time())
+
+            # Adds 'IN' and 'OUT' punches for each day
+            punches.append((employee_id, 'IN', punch_in))
+            punches.append((employee_id, 'OUT', punch_out))
+
+            current_date += timedelta(days=1)  # Moves to the next workday
+        current_date += timedelta(days=2)  # Skips weekends (Saturday, Sunday)
+
+    return punches
+
+# Defines start dates for each quarter in 2024
+quarter_start_dates = [
+    datetime(2024, 1, 1),  # Q1 start date
+    datetime(2024, 4, 1),  # Q2 start date
+    datetime(2024, 7, 1),  # Q3 start date
+    datetime(2024, 10, 1), # Q4 start date
 ]
-cursor.executemany(sql, val)
+
+# Collects punch data for all employees across all quarters
+punch_data = []
+for employee_id in range(1, 7):  # Assuming 6 employees
+    for start_date in quarter_start_dates:
+        punch_data.extend(generate_punches(employee_id, start_date))
+
+# Inserts punches into timekeeping table
+sql = "INSERT INTO timekeeping (employee_id, in_or_out, punch_datetime) VALUES (%s, %s, %s)"
+cursor.executemany(sql, punch_data)
+
 
 # INSERT 12 example shipments
 sql = ("INSERT INTO shipment_tracking (ship_date, est_delivery_date, delivery_date, carrier, "
